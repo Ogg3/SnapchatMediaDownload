@@ -13,4 +13,4 @@ The link is used to download a encrypted version of the media and the base64 val
 
 # Examples
 
-main -i contentManagerDB.db -o -k conversationid
+main -i contentManagerDB.db -o C:\outputpath -k conversationid
