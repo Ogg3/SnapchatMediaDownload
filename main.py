@@ -31,6 +31,24 @@ def get_strings(proto):
     return a
 
 def get_http(a):
+    import unicodedata
+    import re
+
+    def slugify(value, allow_unicode=False):
+        """
+        Taken from https://github.com/django/django/blob/master/django/utils/text.py
+        Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+        dashes to single dashes. Remove characters that aren't alphanumerics,
+        underscores, or hyphens. Convert to lowercase. Also strip leading and
+        trailing whitespace, dashes, and underscores.
+        """
+        value = str(value)
+        if allow_unicode:
+            value = unicodedata.normalize('NFKC', value)
+        else:
+            value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+        value = re.sub(r'[^\w\s-]', '', value.lower())
+        return re.sub(r'[-\s]+', '-', value).strip('-_')
 
     http_list = []
     for i in a:
@@ -39,31 +57,39 @@ def get_http(a):
 
     if len(http_list) != 1:
         print("Found more than one or no link in the protobuffer!")
-        print("Exiting")
-        sys.exit(0)
+        return
 
     print(f"Found URL, {http_list[0]}")
-    filename = os.path.basename(http_list[0])
+    filename = os.path.basename(slugify(http_list[0]))
 
     return filename, http_list[0]
 
 def get_keyiv(a):
+    import base64
+
+    def isBase64(sb):
+        try:
+            if isinstance(sb, str):
+                # If there's any unicode here, an exception will be thrown and the function will return false
+                sb_bytes = bytes(sb, 'ascii')
+            elif isinstance(sb, bytes):
+                sb_bytes = sb
+            else:
+                raise ValueError("Argument must be string or bytes")
+            return base64.b64encode(base64.b64decode(sb_bytes)) == sb_bytes
+        except Exception:
+            return False
 
     base64_list = []
 
     for i in a:
-        if len(i) > 5:
-            try:
-                base64.b64decode(i)
-                base64_list.append(i)
-            except:
-                pass
+        if isBase64(i):
+            base64_list.append(i)
 
     if len(base64_list) != 2:
         print("Found more than two or no base64 values in the protobuf!")
         print(base64_list)
-        print("Exiting")
-        sys.exit(0)
+        return
 
     key = base64_list [0]
     iv = base64_list[1]
@@ -90,24 +116,40 @@ def get_protobuffer(filename, key):
     conn = sqlite3.connect(filename)
 
     if conn:
-        qr = f"""
-        SELECT
-        CONTENT_DEFINITION
-        FROM CONTENT_OBJECT_TABLE
-        WHERE KEY LIKE '%{key}%'
-        """
+        if "contentManager" in filename:
+            qr = f"""
+            SELECT
+            CONTENT_DEFINITION
+            FROM CONTENT_OBJECT_TABLE
+            WHERE KEY LIKE '%{key}%'
+            """
 
-        curs = conn.cursor()
+            curs = conn.cursor()
 
-        try:
+            try:
+                curs.execute(qr)
+            except:
+                qr.replace("KEY", "CONTENT_KEY")
+
             curs.execute(qr)
-        except:
-            qr.replace("KEY", "CONTENT_KEY")
 
-        curs.execute(qr)
+            for i in curs.fetchall():
+                res.append(i[0])
 
-        for i in curs.fetchall():
-            res.append(i[0])
+        elif "arroyo" in filename:
+            qr = f"""
+            SELECT
+            message_content
+            FROM conversation_message
+            WHERE client_conversation_id LIKE '%{key}%' AND content_type NOT LIKE '1'
+            """
+
+            curs = conn.cursor()
+
+            curs.execute(qr)
+
+            for i in curs.fetchall():
+                res.append(i[0])
 
     return res
 
@@ -123,12 +165,15 @@ def decryptFile(enc_data, key, iv, output_path, filename):
     except Exception as e:
         print(f"ERROR when decrypting! {e}")
         return
+    print("Decrypted file!")
 
     kind = filetype.guess(dec_data)
     path = os.path.join(output_path, filename+"."+str(kind.extension))
 
     with open(path, "wb") as f:
         f.write(dec_data)
+
+    print(f"Wrote file {filename}!")
 
 if __name__ == '__main__':
 
@@ -154,13 +199,21 @@ if __name__ == '__main__':
         print(f"Checking protobuffer nr{count}")
         a = get_strings(i)
 
-        filename, b = get_http(a)
+        httpout = get_http(a)
 
-        key, iv = get_keyiv(a)
+        if httpout is None:
+            continue
 
-        respons = download_file(b)
+        key_iv = get_keyiv(a)
+
+        if key_iv is None:
+            continue
+
+        respons = download_file(httpout[1])
 
         if respons.status_code != 200:
             print(f"Got status code {respons.status_code}")
             continue
-        decryptFile(respons.content, key, iv, args.output_path, filename)
+        print("Downloaded file!")
+        decryptFile(respons.content, key_iv[0], key_iv[1], args.output_path, httpout[0])
+        print()
