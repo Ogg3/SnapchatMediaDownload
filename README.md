@@ -1,7 +1,7 @@
 # SnapchatMediaDownload
 A tool to download and decrypt chat media using the file contentManager.db
 
--i Path to contentManagerDB.db
+-i Path to contentManagerDB.db or arroyo.db
 
 -o Output directory where decrypted media will be stored
 
@@ -13,4 +13,4 @@ The link is used to download a encrypted version of the media and the base64 val
 
 # Examples
 
-main -i contentManagerDB.db -o C:\outputpath -k conversationid
+main -i database.db -o C:\outputpath -k key
