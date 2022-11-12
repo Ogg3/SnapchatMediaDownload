@@ -13,8 +13,8 @@ The link is used to download a encrypted version of the media and the base64 val
 
 # Examples
 
-Check in database for the matching queries with key
+Check in database for the matching queries with key </br>
 main -i database.db -o C:\outputpath -k key
 
-Check in database for every protobuf
+Check in database for every protobuf</br>
 main -i database.db -o C:\outputpath -k ""
