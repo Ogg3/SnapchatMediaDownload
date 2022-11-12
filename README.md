@@ -1,5 +1,5 @@
 # SnapchatMediaDownload
-A tool to download and decrypt chat media using the file contentManager.db
+A tool to download and decrypt chat media using the file contentManager.db or arroyo.db
 
 -i Path to contentManagerDB.db or arroyo.db
 
