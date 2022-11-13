@@ -60,7 +60,7 @@ def get_http(a):
         return
 
     print(f"Found URL, {http_list[0]}")
-    filename = os.path.basename(slugify(http_list[0]))
+    filename = slugify(os.path.basename(http_list[0]))
 
     return filename, http_list[0]
 
