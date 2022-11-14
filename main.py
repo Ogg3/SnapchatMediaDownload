@@ -68,16 +68,20 @@ def get_keyiv(a):
     import base64
 
     def isBase64(sb):
-        try:
-            if isinstance(sb, str):
-                # If there's any unicode here, an exception will be thrown and the function will return false
-                sb_bytes = bytes(sb, 'ascii')
-            elif isinstance(sb, bytes):
-                sb_bytes = sb
-            else:
-                raise ValueError("Argument must be string or bytes")
-            return base64.b64encode(base64.b64decode(sb_bytes)) == sb_bytes
-        except Exception:
+        # Not so accurate but need to weed out "Chat" and "image" that where being accepted
+        if sb[-1] == "=":
+            try:
+                if isinstance(sb, str):
+                    # If there's any unicode here, an exception will be thrown and the function will return false
+                    sb_bytes = bytes(sb, 'ascii')
+                elif isinstance(sb, bytes):
+                    sb_bytes = sb
+                else:
+                    raise ValueError("Argument must be string or bytes")
+                return base64.b64encode(base64.b64decode(sb_bytes)) == sb_bytes
+            except Exception:
+                return False
+        else:
             return False
 
     base64_list = []
@@ -129,7 +133,7 @@ def get_protobuffer(filename, key):
             try:
                 curs.execute(qr)
             except:
-                qr.replace("KEY", "CONTENT_KEY")
+                qr = qr.replace("KEY", "CONTENT_KEY")
 
             curs.execute(qr)
 
